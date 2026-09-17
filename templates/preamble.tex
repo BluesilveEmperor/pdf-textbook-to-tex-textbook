@@ -1,0 +1,164 @@
+% ============================================================
+% preamble.tex —— 共享导言区模板（通用版）
+%
+% 用途：由 md/PDF 转换而来的数学教材 LaTeX 项目的统一导言区，
+%       提供页面设置、数学宏包、定理族环境、交叉引用与书名元信息。
+%
+% 说明：
+%   * 文档类由 main.tex 声明（ctexbook），本文件只含宏包与配置，
+%     因此不要在本文件中写 \documentclass。
+%   * 编译方式（工作目录 = 项目根，即 main.tex 所在目录）：
+%       xelatex -interaction=nonstopmode -output-directory=build main.tex
+%     连续编译 2–3 遍，使目录、交叉引用（cleveref）与 PDF 书签收敛。
+%   * 编码：所有文件均为 UTF-8。
+%   * 本章节的文件命名约定：chapters/chNN.tex（如 ch01.tex）。
+%   * 标签命名约定：前缀冒号格式，如 def:、thm:、lem:、prop:、
+%     cor:、ex:、rem:（详见下方定理环境与 convert.py 的 id_map）。
+% ============================================================
+
+% ------------------------------------------------------------
+% 〇、页面设置（收窄页边距，减少页面空白）
+% ------------------------------------------------------------
+% ctexbook 默认页边距偏大，版面留白过多。
+% 以下收窄为：左右 2.2cm、上下 2.5cm，提升版面利用率。
+% 如需再调，改动下列数值后重新编译两遍即可。
+\usepackage{geometry}
+\geometry{
+  a4paper,
+  left=2.2cm, right=2.2cm,   % 左右边距
+  top=2.5cm, bottom=2.5cm,   % 上下边距
+  headsep=0.6cm,             % 页眉与正文的距离
+  footskip=0.9cm,            % 页码与正文底部的距离
+}
+
+% 允许 LaTeX 在紧急时拉伸字间距，避免长行内公式/长词溢出版心
+% （配合收窄后的边距，消除 "Overfull \hbox" 警告）
+\setlength{\emergencystretch}{3em}
+
+% ------------------------------------------------------------
+% 一、数学宏包
+% ------------------------------------------------------------
+% 注意加载顺序：先 amsmath / amssymb，再 amsthm（定理环境）与
+% aliascnt（须在 amsthm 之后），再 mathtools（amsmath 增强），
+% 最后 bm / mathrsfs / xcolor。
+\usepackage{amsmath}     % 数学环境基础（equation、align 等）
+\usepackage{amssymb}     % 数学符号（\varnothing、\lesssim 等）
+\usepackage{amsthm}      % 定理环境与证明环境
+\usepackage{aliascnt}    % 为共享编号序列的环境提供独立计数器名（供 cleveref 区分类型）
+\usepackage{mathtools}   % amsmath 增强（\coloneqq、dcases 等）
+\usepackage{bm}          % 粗体数学符号（\bm）
+\usepackage{mathrsfs}    % 花写字母 \mathscr（OCR 识别的拓扑/代数符号）
+\usepackage{xcolor}      % 文本颜色(\textcolor)—— 标记 OCR 损坏公式待校对
+
+% 长公式允许适度跨页（教材排版常用）
+\allowdisplaybreaks[1]
+
+% ------------------------------------------------------------
+% 二、图形
+% ------------------------------------------------------------
+\usepackage{graphicx}    % 插图
+\graphicspath{{images/}} % 插图统一存放在项目 images/ 目录
+\providecommand{\pandocbounded}[1]{#1}  % pandoc 3.x 图片包裹命令透传
+
+% ------------------------------------------------------------
+% 三、列表
+% ------------------------------------------------------------
+\usepackage{enumitem}    % 列表间距与标号格式微调
+\setlist{itemsep=2pt, topsep=4pt, parsep=0pt}
+
+% ------------------------------------------------------------
+% 四、定理族环境（国内教材编号惯例）
+% 计数器设计说明：
+%   * theorem 为主计数器，按章编号（编号形如"定理 1.2"）；
+%   * definition / lemma / proposition / corollary 需要与 theorem
+%     "共享同一编号序列"，使"定义 1.1、定理 1.2、引理 1.3……"在同一
+%     章内连续编号；但**不能直接共享同一个计数器**。
+%     原因：cleveref 是依据 \label 绑定的"计数器名"来判定引用类型的。
+%     若四者直接共享 theorem 计数器，它们的 label 全部绑定到 theorem
+%     这一个计数器名上，于是无一例外被识别为定理类型，\cref 一律
+%     渲染成"定理 X"；同时 \crefname{definition} 等条目永远不会被
+%     查到，形同虚设。
+%     方案：用 aliascnt 为四者各建立**独立计数器名**，同时保持与
+%     theorem **共享同一编号序列**（编号仍然连续），从而既连续编号、
+%     又能被 cleveref 正确区分类型。
+%   * example、remark 使用独立计数器（同样按章编号），本身就彼此独立，
+%     无需 aliascnt。
+% 加载顺序约束：
+%   * amsthm 须在 hyperref 之前加载；aliascnt 须在 amsthm 之后加载；
+%   * 下列全部 \newtheorem 定义须在 cleveref 之前完成。
+% ------------------------------------------------------------
+% --- 4.1 声明主计数器（plain 风格：编号体斜体） ---
+\newtheorem{theorem}{定理}[chapter]
+
+% --- 4.2 共享编号序列、但各自拥有独立计数器名的环境 ---
+% 每个环境三步：\newaliascnt 建独立计数器名（以 theorem 为别名）
+%              -> \newtheorem 让环境使用该计数器
+%              -> \aliascntresetthe 使新计数器与 theorem 同步计数
+\theoremstyle{definition}                % 正文直体（黑体编号由 ctex 处理）
+\newaliascnt{definition}{theorem}
+\newtheorem{definition}[definition]{定义}
+\aliascntresetthe{definition}
+
+\theoremstyle{plain}                     % 正文斜体
+\newaliascnt{lemma}{theorem}
+\newtheorem{lemma}[lemma]{引理}
+\aliascntresetthe{lemma}
+
+\newaliascnt{proposition}{theorem}
+\newtheorem{proposition}[proposition]{命题}
+\aliascntresetthe{proposition}
+
+\newaliascnt{corollary}{theorem}
+\newtheorem{corollary}[corollary]{推论}
+\aliascntresetthe{corollary}
+
+% --- 4.3 独立计数器的环境（本就独立，无需 aliascnt） ---
+\theoremstyle{definition}
+\newtheorem{example}{例}[chapter]        % 例：definition 风格
+\theoremstyle{remark}
+\newtheorem{remark}{注}[chapter]         % 注：remark 风格
+
+% --- 4.4 证明环境汉化 ---
+\renewcommand{\proofname}{证}
+
+% ------------------------------------------------------------
+% 五、超链接与交叉引用
+% ------------------------------------------------------------
+\usepackage{hyperref}    % 必须在 cleveref 之前加载
+\hypersetup{
+  hidelinks,             % 链接不加彩框、不变色
+  bookmarksnumbered,     % PDF 书签带章节编号
+}
+
+% cleveref 必须在 hyperref 之后加载
+\usepackage{cleveref}
+% 中文引用名（单数 / 复数取同一形式）
+% 匹配规则：cleveref 通过 \label 所绑定的"计数器名"查表选取引用名，
+% 而不是按环境名匹配。因此当多个环境共享同一计数器时，必须先用
+% aliascnt 为其建立独立计数器名（见第 4.2 节），否则同组环境会共用
+% 主计数器的引用名（全部显示"定理"），下面 definition / lemma /
+% proposition / corollary 四条也会形同虚设、永不生效。
+\crefname{theorem}{定理}{定理}
+\crefname{definition}{定义}{定义}
+\crefname{lemma}{引理}{引理}
+\crefname{proposition}{命题}{命题}
+\crefname{corollary}{推论}{推论}
+\crefname{example}{例}{例}
+\crefname{remark}{注}{注}
+\crefname{figure}{图}{图}
+\crefname{equation}{式}{式}
+\crefname{chapter}{章}{章}
+
+% ------------------------------------------------------------
+% 六、书名元信息命令
+% ------------------------------------------------------------
+% main.tex 中调用：\bookinfo{书名}{作者}
+% 同时写入 PDF 元数据（pdftitle / pdfauthor）。
+% 提示：作者留空可避免标题页出现多余文字，即 \bookinfo{《书名》}{}。
+% ------------------------------------------------------------
+\newcommand{\bookinfo}[2]{%
+  \title{#1}%
+  \author{#2}%
+  \date{}%
+  \hypersetup{pdftitle={#1}, pdfauthor={#2}}%
+}

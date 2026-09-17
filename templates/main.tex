@@ -1,0 +1,57 @@
+% ============================================================
+% main.tex —— 通用主文件模板（骨架）
+%
+% 用途：数学教材 LaTeX 项目入口。使用时把本文件复制到项目根目录，
+%       将书名替换为实际书名、按章增删占位章节，并将 chapters/chNN.tex
+%       替换为真实转换产物即可。
+%
+% 编译方式（工作目录 = 本文件所在目录）：
+%   xelatex -interaction=nonstopmode -output-directory=build main.tex
+%   （连续编译 2–3 遍使目录与交叉引用收敛）
+%
+% 结构：frontmatter（标题页 + 目录）→ mainmatter（正文各章）
+% 编码：UTF-8
+% ============================================================
+\documentclass[UTF8,a4paper,zihao=-4,fontset=windows,openany]{ctexbook}
+% 选项说明：
+%   UTF8            —— UTF-8 编码
+%   a4paper         —— A4 纸张
+%   zihao=-4        —— 正文字号小四
+%   fontset=windows —— 使用 Windows 系统字体（中易宋体/黑体）；
+%                      若编译环境字体异常，可去掉本选项改用 fandol
+%   openany         —— 允许章/目录从任意页开始。book 类默认 openright
+%                      强制"右页起排"，会在标题页与目录页之间插入
+%                      一页空白；openany 消除该空白页
+
+% 导言区：全部宏包、定理环境与交叉引用配置都在 preamble.tex 中
+\input{preamble}
+
+\begin{document}
+
+% ---------------- 前置部分：标题页与目录 ----------------
+\frontmatter
+\bookinfo{《书名》}{}   % 第一参数为书名，第二参数为作者；作者留空可避免
+                        % 标题页出现多余文字（如 "作者" 空行）
+\maketitle
+\tableofcontents
+
+% ---------------- 正文部分 ----------------
+\mainmatter
+
+% ===== 各章正文 =====
+% 约定：每章一个 \chapter{章名} + 一个 \input{chapters/chNN}。
+%       chNN.tex 内部只写正文内容，不再重复写 \chapter，
+%       否则会产生空章标题与错误的章编号。
+%       标签使用前缀冒号格式（def:、thm:、ex:、rem: 等）。
+%
+% ★★★ 新增/删除章时，务必同步增删下面的 \chapter + \input 对 ★★★
+%   * 只写 \input 而不建对应的 chapters/chNN.tex，或写了 \chapter
+%     却没有对应文件，都会导致编译直接失败（找不到文件）。
+%   * 下面默认只保留"一个"示例章，以便使用者建好 ch01.tex 即可编译通过；
+%     后续按需在本节末尾成对追加。
+
+% --- 示例章：按实际书名/章名替换，并同步建立 chapters/ch01.tex ---
+\chapter{绪论}
+\input{chapters/ch01}
+
+\end{document}

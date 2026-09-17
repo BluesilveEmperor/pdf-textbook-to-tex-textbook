@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# LaTeX 编译产物（skill 本身不含项目，备用）
+build/
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
