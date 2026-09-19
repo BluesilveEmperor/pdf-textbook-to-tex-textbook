@@ -70,6 +70,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - 正则识别定理头（如 `**定理 1.2.3**（名称）` → `\begin{theorem}[名称]\label{thm:<章>-<章内序数>}`），并**排除引用句**（"定理 1.2.3 表明…"是引用而非定理头）。**label 编码**为 `<前缀>:<章号>-<章内序数>`（如 `thm:7-8` 表示"第 7 章第 8 个 theorem 环境"），**不是**把书内编号连字符化。参考实现见 `scripts/convert.py`，label 约定详见 `references/stage2-chapter-conversion.md`。
 - 采用**两遍流程**：先扫描全书定理头建立「编号 → label」全局映射，再做后处理生成 `\label` 与 `\cref`，确保跨章交叉引用正确。
 - 修复 MinerU OCR 公式误差（对照原书；见陷阱 7）。
+- **全角符号 → 半角符号**：用 `scripts/fix_fullwidth.py` 把所有 `.tex` 文件中的全角标点（，。：；？！（）等）替换为半角，适用于全部教材（见陷阱 12）。
 - 图片复制到 `images/`，正文 `\includegraphics` 直接用文件名（`\graphicspath` 已指向 `images/`）。
 
 **2.3 编译验证**
@@ -102,7 +103,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 ## 常见陷阱（必读）
 
-完整版见 `references/pitfalls.md`，最关键的十一条：
+完整版见 `references/pitfalls.md`，最关键的十二条：
 
 1. **aux 损坏**：报大量连锁错误（含 `\@newl@bel`、`\@@BOOKMARK`、`Text line contains an invalid character`）时，**先清空 `build/` 目录重编译**，再判断真实错误，勿逐条排查源码。改动 `\documentclass` / `geometry` / preamble 等**全局参数后必须清 build 重建 aux**。
 2. **零错误 ≠ 结构正确**：`main.tex` 漏写 `\chapter{}` 会让全书退化到"第0章"、编号变 `0.x`，且**不产生任何编译报警**。验收必须查目录与编号。
@@ -115,6 +116,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 9. **编译日志误报**：`not found` 可能来自 `pdftexcmds` 包信息行，`rerun` 可能匹配到包名 `rerunfilecheck`——均非真问题。但改动结构后官方提示 `Rerun to get cross-references right` 为**真**，须补跑收敛。
 10. **页面核查用文本提取**：分批视觉/OCR 分析可能给出互相矛盾的结论（例如未看某页却判定其空白）；判断某页是否空白应以该页**文本提取**结果为准。
 11. **共享计数器 + cleveref 类型名失效**：definition/lemma/proposition/corollary 与 theorem 共享计数器时，cleveref 无法区分类型，指向这几类的 `\cref` 会**一律渲染成「定理 X」**（`\crefname` 无效，且编译不报错）。必须用 `aliascnt` 为各环境建立独立计数器名；验收时须实测各类 `\cref` 的实际类型名——与陷阱 2 同属"静默错误"，只看编译结果发现不了。
+12. **全角符号残留**：OCR/Markdown 转换会在 `.tex` 正文中混入全角标点（，。：；？！（）""''、—…等），影响排版一致性。用 `scripts/fix_fullwidth.py` 在编译前批量替换为半角；LaTeX 特殊字符的全角版本（％＃＆＿^\~等）自动转义为 `\%` `\#` `\&` `\_` 等。
 
 ## 参考文档
 
@@ -127,3 +129,4 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `references/pitfalls.md` — 踩坑经验汇总
 - `templates/preamble.tex`、`templates/main.tex` — 可直接复用的模板
 - `scripts/convert.py` — 参考转换脚本（两遍流程：扫描全局 id_map + 后处理）
+- `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本

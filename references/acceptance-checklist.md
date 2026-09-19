@@ -141,6 +141,27 @@ python -c "from pypdf import PdfReader; r=PdfReader(r'build/main.pdf'); [print(i
 
 判据：某页提取出的文本**去空白后长度为 0**，才判定为空白页。若长度非 0，即便视觉上像空白（例如只有页码或页眉），也不是需要处理的空白页。
 
+### 3.11 全角符号已替换为半角
+
+教材正文中的全角标点（`，。：；？！（）""''、—…` 等）应全部替换为半角。检查方法：
+
+```python
+# 扫描所有 .tex 文件中是否仍有全角符号残留
+import os
+fullwidth = set('，。：；？！（）""''、—…　％＃＆＿＼｛｝～＾＜＞＝＋－＊／｜＠［］')
+for root, dirs, files in os.walk('.'):
+    dirs[:] = [d for d in dirs if d not in ('tmp_work', 'build_work', 'build', '.git')]
+    for f in files:
+        if f.endswith('.tex'):
+            with open(os.path.join(root, f), encoding='utf-8') as fh:
+                for i, line in enumerate(fh, 1):
+                    found = fullwidth & set(line)
+                    if found:
+                        print(f'{os.path.join(root, f)}:{i} {found}')
+```
+
+判据：无输出即通过。若仍有残留，重跑 `python scripts/fix_fullwidth.py` 后清 `build/` 重编译。
+
 ## 第 4 层：收尾与归档
 
 ### 4.1 清理项目根目录的误输出残留
