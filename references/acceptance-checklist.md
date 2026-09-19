@@ -162,6 +162,19 @@ for root, dirs, files in os.walk('.'):
 
 判据：无输出即通过。若仍有残留，重跑 `python scripts/fix_fullwidth.py` 后清 `build/` 重编译。
 
+### 3.12 公式定界符统一为美元符号
+
+编码规范：行内公式只能用 `$...$`、行间公式只能用 `$$...$$`，**不得残留** pandoc 改写出的 `\(...\)` / `\[...\]`。检查方法：
+
+```powershell
+findstr /S /C:"\\(" chapters\*.tex main.tex
+findstr /S /C:"\\)" chapters\*.tex main.tex
+findstr /S /R /C:"\\[" chapters\*.tex main.tex
+findstr /S /R /C:"\\]" chapters\*.tex main.tex
+```
+
+判据：无输出即通过。注意排除误报——`\\[2pt]` 类"换行+可选参数"不是 `\[` 定界符；若 findstr 语义不够精确，用 Python 正则 `(?<!\\)\\[\(\)\[\]]` 逐行扫描（与 `scripts/fix_math_delimiters.py` 同一判据）。若有残留，重跑 `python scripts/fix_math_delimiters.py` 后重编译。
+
 ## 第 4 层：收尾与归档
 
 ### 4.1 清理项目根目录的误输出残留

@@ -71,6 +71,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - 采用**两遍流程**：先扫描全书定理头建立「编号 → label」全局映射，再做后处理生成 `\label` 与 `\cref`，确保跨章交叉引用正确。
 - 修复 MinerU OCR 公式误差（对照原书；见陷阱 7）。
 - **全角符号 → 半角符号**：用 `scripts/fix_fullwidth.py` 把所有 `.tex` 文件中的全角标点（，。：；？！（）等）替换为半角，适用于全部教材（见陷阱 12）。
+- **公式定界符统一**：pandoc 会把 Markdown 的 `$…$` / `$$…$$` 转成 `\(...\)` / `\[...\]`；用 `scripts/fix_math_delimiters.py` 回替换为美元符号形式——**行内公式只能用单美元 `$...$`、行间公式只能用双美元 `$$...$$`**（编码规范，详见 `references/stage2-chapter-conversion.md` §7.6）。
 - 图片复制到 `images/`，正文 `\includegraphics` 直接用文件名（`\graphicspath` 已指向 `images/`）。
 
 **2.3 编译验证**
@@ -99,6 +100,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 | 交叉引用 | `\cref` + 中文 `\crefname` + `aliascnt` | 共享编号序列下仍渲染正确类型名（定义/引理/命题/推论） |
 | 章文件 | `chapters/chNN.tex`；`main.tex` 挂 `\chapter{}` + `\input{}` | 章标题只写在 main.tex，章文件内不重复写 `\chapter` |
 | 标签格式 | `def:` / `thm:` / `lem:` / `prop:` / `cor:` / `ex:` / `rem:` | 便于检索与引用 |
+| 公式定界符 | 行内 `$...$`、行间 `$$...$$`；**禁用** `\(...\)` / `\[...\]` | 编码规范；pandoc 输出需经 `scripts/fix_math_delimiters.py` 回替换；amsmath 环境（equation/align）不受约束 |
 | 编译 | `xelatex` 连跑 2–3 遍，产物只进 `build/` | |
 
 ## 常见陷阱（必读）
@@ -130,3 +132,4 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `templates/preamble.tex`、`templates/main.tex` — 可直接复用的模板
 - `scripts/convert.py` — 参考转换脚本（两遍流程：扫描全局 id_map + 后处理）
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本
+- `scripts/fix_math_delimiters.py` — 公式定界符统一脚本（`\(...\)`/`\[...\]` → `$…$`/`$$…$$`）

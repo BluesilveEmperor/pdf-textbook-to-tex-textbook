@@ -74,6 +74,10 @@ copy templates\main.tex     <书名>\
 2. **章标题只写在 `main.tex`**：`\chapter{章名}` 在最外层，章文件 `chNN.tex` 内**只含 `\section` 及以下**。漏写 `\chapter` 会让全书退化到"第 0 章"且**不报任何编译错误**（见 pitfalls 陷阱 2）。
 3. **`\input` 不带 `.tex` 后缀**：`\input{chapters/ch01}`。
 
+全项目编码规范（正文编写与转换产物统一遵守）：
+
+4. **公式定界符**：行内公式只能用单美元 `$...$`、行间公式只能用双美元 `$$...$$`；**禁用** `\(...\)` 与 `\[...\]`（pandoc 的改写输出须用 `scripts/fix_math_delimiters.py` 回替换，详见 `stage2-chapter-conversion.md` §7.6）。带编号/多行对齐的 amsmath 环境（`equation`/`align` 等）不受此约束。
+
 ## 4. `preamble.tex` 逐节解释
 
 ### 4.1 页面设置（〇）
