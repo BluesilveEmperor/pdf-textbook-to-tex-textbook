@@ -183,7 +183,11 @@ findstr /S /R /C:"\\]" chapters\*.tex main.tex
 
 **两类常见残留**：
 
-1. **编译产物**：若编译时忘加 `-output-directory=build`（或手工跑过 `xelatex main.tex`），项目根会散落 `main.aux`、`main.log`、`main.pdf`、`main.toc`、`main.out`。判据：干净构建下这些文件只应出现在 `build/`，出现在项目根即为残留 → 删除（`build/` 内的同名文件保留）。
+1. **编译产物**：若编译时忘加 `-output-directory=build`（或手工跑过 `xelatex main.tex`），项目根会散落 `main.aux`、`main.log`、`main.pdf`、`main.toc`、`main.out`；**Windows 下即使带了参数**，根目录仍可能漏出 `main.synctex.gz`、`main.fdb_latexmk`、`main.fls` 等零散残留。判据：干净构建下这些文件只应出现在 `build/`，出现在项目根即为残留 → 删除（`build/` 内的同名文件保留）。
+   - **优先用统一编译入口** `python scripts/compile_tex.py`——脚本固定带输出目录参数、每遍编译后自动按清单清扫根目录残留（清单含 `.aux/.log/.out/.toc/.pdf/.synctex/.synctex.gz/.fdb_latexmk/.fls/.xdv/.blg/.bbl`）；
+   - 手工编译后用 `python scripts/compile_tex.py <项目根> --clean-only` 补扫一次；
+   - 收尾核对：项目根 `main.*` 应只剩 `main.tex` 源文件。
+
 2. **脚本副本**：项目根若出现 `convert.py`、`fix_formulas.py` 等工作脚本，确认它是否只是工作区脚本的误放副本（例如根目录有一份 `convert.py`、而 `build_work/` 里才是实际执行的版本）。若是副本 → 删除，保留工作区那一份。删除前先确认内容/行数差异，不要凭文件名判断。
 
 ### 4.2 保留工作区与原始缓存

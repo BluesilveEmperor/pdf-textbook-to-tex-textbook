@@ -76,7 +76,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 **2.3 编译验证**
 
-- `xelatex -interaction=nonstopmode -output-directory=build main.tex` **连跑 2–3 遍**，收敛目录与交叉引用。
+- **统一编译入口**：`python scripts/compile_tex.py [项目根] [--engine xelatex|lualatex]`——脚本固定带 `-output-directory=build`（杜绝忘加参数导致产物散落根目录），每遍后自动清扫根目录残留（Windows 下 `-output-directory` 未完全隔离，会漏出 synctex/fdb/fls 等），自动检测 `Rerun` 提示并补跑至收敛（≤3 遍），结尾输出页数/错误/undefined 摘要。手工编译仍须遵守：`xelatex -interaction=nonstopmode -output-directory=build main.tex` **连跑 2–3 遍**，收尾按 `acceptance-checklist.md` §4.1 清根目录残留。
 - 本阶段目标：**0 错误、0 undefined**（交叉引用全收敛）。排版类告警（`Overfull`/`Underfull`/`Missing character`/字体替换）通常**无法归零**，须按 `references/compilation-and-troubleshooting.md` 分级评估：量级可忽略的登记即可，**超出页边距（约 2.2cm）的溢出必须修**（见陷阱 8）。
 
 ### 阶段 3：验收与交付
@@ -101,7 +101,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 | 章文件 | `chapters/chNN.tex`；`main.tex` 挂 `\chapter{}` + `\input{}` | 章标题只写在 main.tex，章文件内不重复写 `\chapter` |
 | 标签格式 | `def:` / `thm:` / `lem:` / `prop:` / `cor:` / `ex:` / `rem:` | 便于检索与引用 |
 | 公式定界符 | 行内 `$...$`、行间 `$$...$$`；**禁用** `\(...\)` / `\[...\]` | 编码规范；pandoc 输出需经 `scripts/fix_math_delimiters.py` 回替换；amsmath 环境（equation/align）不受约束 |
-| 编译 | `xelatex` 连跑 2–3 遍，产物只进 `build/` | |
+| 编译 | `scripts/compile_tex.py`（固定 `-output-directory=build` + 自动清根目录残留 + 自动补跑收敛）；手工编译 `xelatex` 连跑 2–3 遍，产物只进 `build/` | 封装命令杜绝漏参数；Windows 下 `-output-directory` 未完全隔离须主动清扫 |
 
 ## 常见陷阱（必读）
 
@@ -131,5 +131,6 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `references/pitfalls.md` — 踩坑经验汇总
 - `templates/preamble.tex`、`templates/main.tex` — 可直接复用的模板
 - `scripts/convert.py` — 参考转换脚本（两遍流程：扫描全局 id_map + 后处理）
+- `scripts/compile_tex.py` — 统一编译入口（固定 `-output-directory=build`、自动清根目录残留、自动补跑收敛）
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本
 - `scripts/fix_math_delimiters.py` — 公式定界符统一脚本（`\(...\)`/`\[...\]` → `$…$`/`$$…$$`）

@@ -4,7 +4,17 @@
 
 ## 1. 编译命令
 
-工作目录 = 项目根（`main.tex` 所在目录）：
+**推荐：统一编译入口脚本**（自动补跑收敛 + 自动清扫根目录残留）：
+
+```powershell
+python scripts/compile_tex.py <项目根>                # xelatex，最多 3 遍
+python scripts/compile_tex.py <项目根> --engine lualatex   # OCR 严重、xelatex 报字体内部错误的书
+python scripts/compile_tex.py <项目根> --clean-only    # 只清扫根目录残留，不编译
+```
+
+脚本固定带 `-output-directory=build`（杜绝漏参数）、每遍后按清单清除根目录 `<jobname>.aux/.log/.out/.toc/.pdf/.synctex*/.fdb_latexmk/.fls` 残留、检测官方 `Rerun` 提示自动补跑，结尾输出页数/错误/undefined 摘要。
+
+**手工编译**（无法用脚本时）——工作目录 = 项目根（`main.tex` 所在目录）：
 
 ```powershell
 xelatex -interaction=nonstopmode -output-directory=build main.tex
@@ -21,6 +31,13 @@ xelatex -interaction=nonstopmode -output-directory=build main.tex
 ```powershell
 xelatex -interaction=nonstopmode -halt-on-error -output-directory=build main.tex
 ```
+
+⚠️ **"产物只进 build/"的两个已知漏洞**（脚本已内置修复，手工编译时须人工兜底）：
+
+1. **忘加参数**：手工跑 `xelatex main.tex` 漏掉 `-output-directory=build`，全套产物散落项目根；
+2. **未完全隔离**：Windows 下即使带参数，根目录仍可能出现 `synctex` / `fdb_latexmk` / `fls` 等零散残留。
+
+根目录残留的陈旧 aux/log 会误导后续诊断（误读上次错误、引发 aux 连锁假报错，见陷阱 1）。手工编译后必须按 `acceptance-checklist.md` §4.1 清单核对清理。
 
 ## 2. 为什么要"连跑 2–3 遍"
 
