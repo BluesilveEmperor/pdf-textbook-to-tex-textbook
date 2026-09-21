@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-r"""fix_figure_rows.py — 连续图片并行排布（无文字间隔的图两两并排）。
+r"""fix_figure_rows.py — 连续图片并行排布（无文字间隔的图按数量动态并排）。
 
 排版规范：若遇到连续多张图片，且两两图片之间没有任何文字内容，
-则将该部分图片尽量并行排布（默认一行两张），避免逐张独占一行
-造成大片纵向留白。
+则将该部分图片尽量并行排布（根据连续图片数量决定每行张数，而非
+固定一行两张），避免逐张独占一行造成大片纵向留白。
 
 匹配对象（pandoc/convert.py 产出的图片段落，按空行分块后逐块判定）：
     \pandocbounded{\includegraphics[width=…]{哈希}}
@@ -11,12 +11,11 @@ r"""fix_figure_rows.py — 连续图片并行排布（无文字间隔的图两�
     \pandocbounded{\includegraphics[…]{…}} (a) x型区域
 
 改写规则：
-    * 连续 ≥2 个纯图片块 → 每行并排 2 张：
-        - 无图题：同一行 \hfill 连接，各 width=0.46\textwidth；
-        - 有图题：各包 minipage[t]{0.48\textwidth}（图 0.9\linewidth，
+    * 连续 N 个纯图片块 → 按 N 动态决定每行张数：
+        - 无图题：一行 N 张，各 width=0.95/N\textwidth，\hfill 连接；
+        - 有图题：一行 N 张，各 minipage[t]{0.95/N\textwidth}（图 0.9\linewidth，
           图题 \\ 后 \small 居中），minipage 间 \hfill。
-      覆盖原 width（原 0.3/0.4 并排会溢出版心）。
-    * 奇数张的最后一行落单张保持原样（不动，维持默认宽度）。
+      覆盖原 width（原 0.3/0.4 并排多张会溢出版心）。
     * 与文字相隔（非连续）的图片一律不动。
     * 幂等：改写后的并排行是"一行多图"，不再构成"连续空行分隔的
       纯图片块"，重跑无变化。
@@ -54,44 +53,44 @@ def set_width(opt, width):
 
 
 def build_row(figs):
-    """两张图合成一行 LaTeX。figs: [(text, opt, fname, caption), ...]"""
+    """N 张图合成一行 LaTeX。figs: [(text, opt, fname, caption), ...]"""
+    n = len(figs)
+    # 每张图分到的版心宽度（含 \hfill 间隙，0.95 是版心占比）
+    frac = f'0.95/{n}'
     cells = []
     for _, opt, fname, caption in figs:
         if caption:
             opt2 = set_width(opt, r'0.9\linewidth')
             cells.append(
-                '\\begin{minipage}[t]{0.48\\textwidth}\n\\centering\n'
+                '\\begin{minipage}[t]{' + frac + r'\textwidth}\n\\centering\n'
                 f'\\pandocbounded{{\\includegraphics{opt2}{{{fname}}}}}\\\\\n'
                 f'{{\\small {caption}}}\n'
                 '\\end{minipage}'
             )
         else:
-            opt2 = set_width(opt, r'0.46\textwidth')
+            opt2 = set_width(opt, frac + r'\textwidth')
             cells.append(f'\\pandocbounded{{\\includegraphics{opt2}{{{fname}}}}}')
     return '\\hfill\n'.join(cells)
 
 
 def fix(text):
-    """按空行分块，把连续 ≥2 的纯图片块两两并排。返回 (新文本, 改写行数)。"""
-    lines = text.split('\n\n')
+    """按空行分块，把连续 ≥2 的纯图片块按数量动态并排。返回 (新文本, 改写行数)。"""
+    blocks = text.split('\n\n')
     out, n_rows, i = [], 0, 0
-    while i < len(lines):
-        info = parse_figure(lines[i])
+    while i < len(blocks):
+        info = parse_figure(blocks[i])
         if info is None:
-            out.append(lines[i]); i += 1; continue
+            out.append(blocks[i]); i += 1; continue
         # 收集连续纯图片块
         run = [info]
         j = i + 1
-        while j < len(lines):
-            nxt = parse_figure(lines[j])
+        while j < len(blocks):
+            nxt = parse_figure(blocks[j])
             if nxt is None:
                 break
             run.append(nxt); j += 1
         if len(run) >= 2:
-            for k in range(0, len(run) - 1, 2):      # 奇数落单张不动
-                out.append(build_row(run[k:k + 2])); n_rows += 1
-            if len(run) % 2 == 1:
-                out.append(run[-1][0])
+            out.append(build_row(run)); n_rows += 1
         else:
             out.append(run[0][0])
         i = j
@@ -120,8 +119,8 @@ def main():
             print(f'  {os.path.relpath(fp, root)}: 并排 {n} 行')
         total += n
 
-    print(f'\n共 {len(tex_files)} 个 .tex 文件，并排 {total} 行（一行两张）')
-    print('（落单图与非连续图不动；改写后须重编译验证）')
+    print(f'\n共 {len(tex_files)} 个 .tex 文件，并排 {total} 行（按连续图片数量动态并排）')
+    print('（非连续图不动；改写后须重编译验证）')
 
 
 if __name__ == '__main__':

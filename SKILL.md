@@ -74,7 +74,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - **全角符号 → 半角符号**：用 `scripts/fix_fullwidth.py` 把所有 `.tex` 文件中的全角标点（，。：；？！（）等）替换为半角，适用于全部教材（见陷阱 12）。
 - **公式定界符统一**：pandoc 会把 Markdown 的 `$…$` / `$$…$$` 转成 `\(...\)` / `\[...\]`；用 `scripts/fix_math_delimiters.py` 回替换为美元符号形式——**行内公式只能用单美元 `$...$`、行间公式只能用双美元 `$$...$$`**（编码规范，详见 `references/stage2-chapter-conversion.md` §7.6）。
 - **表格列格式居中**：pandoc 表格列格式默认左对齐（`l`），**编码规范要求所有表格中的值居中**——用 `scripts/fix_table_columns.py` 把列格式 `l` 批量改为 `c`（`r`/`p{…}` 保留，详见 `references/stage2-chapter-conversion.md` §7.7）。
-- **连续图片并行排布**：若连续多张图片之间没有任何文字内容，则**一行两张并排**（无图题 `\hfill` 连接、有图题 `minipage` 包裹），避免逐张独占一行造成大片纵向留白——用 `scripts/fix_figure_rows.py` 批量处理（详见 `references/stage2-chapter-conversion.md` §6.1）。
+- **连续图片并行排布**：若连续多张图片之间没有任何文字内容，则**按连续图片数量动态并排**（N 张一行 N 张，无图题 `\hfill` 连接、有图题 `minipage` 包裹，每张宽度 `0.95/N\textwidth`），避免逐张独占一行造成大片纵向留白——用 `scripts/fix_figure_rows.py` 批量处理（详见 `references/stage2-chapter-conversion.md` §6.1）。
 - 图片复制到 `images/`，正文 `\includegraphics` 直接用文件名（`\graphicspath` 已指向 `images/`）。
 
 **2.3 编译验证**
@@ -103,7 +103,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 | 交叉引用 | `\cref` + 中文 `\crefname` + `aliascnt` | 共享编号序列下仍渲染正确类型名（定义/引理/命题/推论） |
 | 章文件 | `chapters/chNN.tex`；`main.tex` 挂 `\chapter{}` + `\input{}` | 章标题只写在 main.tex，章文件内不重复写 `\chapter` |
 | 插图宽度 | 默认 `0.4\textwidth`（convert.py 写显式宽度 + preamble `\setkeys{Gin}` 兜底）；个别大图可显式调大 | 紧凑版面下避免插图霸占整页；显式 width 优先于全局默认 |
-| 连续图片并排 | 一行两张（无图题 `\hfill` 连接、有图题 `minipage` 包裹，`scripts/fix_figure_rows.py`）；奇数落单张不动 | 避免连续图逐张独占行造成大片纵向留白；详见 `stage2-chapter-conversion.md` §6.1 |
+| 连续图片并排 | 按连续图片数量动态并排（N 张一行 N 张，无图题 `\hfill` 连接、有图题 `minipage` 包裹，每张宽度 `0.95/N\textwidth`）；非连续图不动 | 避免连续图逐张独占行造成大片纵向留白；详见 `stage2-chapter-conversion.md` §6.1 |
 | 页边旁注 | `marginnote` 环境（缩进小块 + `\small` + 加粗【旁注】前缀），**不用 `\marginpar`**；md 侧 `[旁注]` 独立段落标记 | `\marginpar` 盒子不可跨页且边距仅 2.2cm 边栏过窄；详见 `stage2-latex-template.md` §4.8、`stage2-chapter-conversion.md` §10.6 |
 | 标签格式 | `def:` / `thm:` / `lem:` / `prop:` / `cor:` / `ex:` / `rem:` | 便于检索与引用 |
 | 公式定界符 | 行内 `$...$`、行间 `$$...$$`；**禁用** `\(...\)` / `\[...\]` | 编码规范；pandoc 输出需经 `scripts/fix_math_delimiters.py` 回替换；amsmath 环境（equation/align）不受约束 |
@@ -143,4 +143,4 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本
 - `scripts/fix_math_delimiters.py` — 公式定界符统一脚本（`\(...\)`/`\[...\]` → `$…$`/`$$…$$`）
 - `scripts/fix_table_columns.py` — 表格列格式居中脚本（列格式 `l` → `c`，`r`/`p{…}` 保留）
-- `scripts/fix_figure_rows.py` — 连续图片并行排布脚本（无文字间隔的图两两并排，一行两张）
+- `scripts/fix_figure_rows.py` — 连续图片并行排布脚本（无文字间隔的图按数量动态并排，N 张一行 N 张）
