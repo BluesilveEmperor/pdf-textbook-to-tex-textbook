@@ -125,10 +125,12 @@ copy templates\main.tex     <书名>\
 ```latex
 \usepackage{graphicx}
 \graphicspath{{images/}}                 % 插图统一存放在项目 images/
+\setkeys{Gin}{width=0.4\textwidth}       % 插图默认宽度 0.4 版心
 \providecommand{\pandocbounded}[1]{#1}   % pandoc 3.x 图片包裹命令透传
 ```
 
 - **`\graphicspath{{images/}}`**：正文一律写 `\includegraphics{<哈希名>}`，**不写 `images/` 前缀**。
+- **`\setkeys{Gin}{width=0.4\textwidth}`**：插图**默认宽度 0.4 版心**（紧凑版面下避免插图霸占整页）。只对**未显式给 width** 的图生效；个别大图在调用处显式写 `[width=0.6\textwidth]` 等即可覆盖默认值。转换脚本 `convert.py` 写出的图均带显式宽度，此行是对手工加图 / pandoc 原生输出的兜底。
 - **`\providecommand{\pandocbounded}[1]{#1}`**：pandoc 3.x 会把图片包成 `\pandocbounded{\includegraphics[...]{...}}`。模板不需要它的溢出保护语义，只需让它"透传"内部内容，否则报 `Undefined control sequence`。用 `\providecommand`（而非 `\newcommand`）是为了兼容将来 pandoc 版本可能自带定义的情况。
 
 ### 4.4 列表（三）
@@ -257,6 +259,33 @@ copy templates\main.tex     <书名>\
 ```
 
 把"书名 + 作者"一次性写入标题页与 PDF 元数据（`pdftitle` / `pdfauthor`）。`\date{}` 显式清空，避免标题页出现编译日期。
+
+### 4.8 页边旁注环境（可选，仅原书带页边短注时启用）
+
+来源：《机器学习》（周志华）转换实测——原书大量页边旁注（术语别称、译注、文献指引），MinerU 会把它们混入正文流或直接丢失（处理方式见 `stage2-chapter-conversion.md` §10.6）。
+
+```latex
+\newenvironment{marginnote}{%
+  \par\smallskip
+  \small
+  \setlength{\leftskip}{1.5em}%
+  \setlength{\rightskip}{0.5em}%
+  \noindent\textbf{【旁注】}\ignorespaces
+}{%
+  \par\smallskip
+}
+```
+
+**设计要点——为什么不用 `\marginpar`**：
+
+| | `\marginpar`（边栏真旁注） | 本模板 `marginnote` 环境 |
+|---|---|---|
+| 跨页 | ❌ 盒子不可跨页，长旁注溢出页边 | ✅ 普通段落，天然可跨页 |
+| 位置 | 版心外侧边栏；双面书内外页边交替 | 正文流内，缩进块 |
+| 宽度 | 受版心外剩余宽度限制（本模板边距仅 2.2cm，边栏过窄） | `\leftskip=1.5em` / `\rightskip=0.5em` 自由控制 |
+| 实现成本 | 需处理双面/高度溢出/与脚注冲突 | 一段环境定义即可 |
+
+即：**视觉上退而求其次（缩进小块而非页边），换取可跨页与实现简单**——对转换场景（旁注数量多、长度不定）是正确取舍。无旁注的书不使用该环境即可，定义保留无副作用。
 
 ## 5. 加载顺序约束（最容易踩的坑）
 

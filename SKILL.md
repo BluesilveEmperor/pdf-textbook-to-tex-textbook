@@ -66,12 +66,15 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 **2.2 逐章转换**
 
+- **先抽样检查目标书的形态再改配置区**（6 处）：定理编号多段/单段混合、`###` 标题形态、末章附件（习题答案/索引）是否保留、`images/` 平铺还是 `chunk-*/` 子目录、是否为下册（章号偏移）、原书是否有**页边旁注**（有则需 `[旁注]` 标记 + marginnote 环境 + 对照原书补录，见 `stage2-chapter-conversion.md` §10.6）。逐条对策见 §10。
 - 用 `pandoc` 将各章 Markdown 初转为 `.tex`。
 - 正则识别定理头（如 `**定理 1.2.3**（名称）` → `\begin{theorem}[名称]\label{thm:<章>-<章内序数>}`），并**排除引用句**（"定理 1.2.3 表明…"是引用而非定理头）。**label 编码**为 `<前缀>:<章号>-<章内序数>`（如 `thm:7-8` 表示"第 7 章第 8 个 theorem 环境"），**不是**把书内编号连字符化。参考实现见 `scripts/convert.py`，label 约定详见 `references/stage2-chapter-conversion.md`。
 - 采用**两遍流程**：先扫描全书定理头建立「编号 → label」全局映射，再做后处理生成 `\label` 与 `\cref`，确保跨章交叉引用正确。
 - 修复 MinerU OCR 公式误差（对照原书；见陷阱 7）。
 - **全角符号 → 半角符号**：用 `scripts/fix_fullwidth.py` 把所有 `.tex` 文件中的全角标点（，。：；？！（）等）替换为半角，适用于全部教材（见陷阱 12）。
 - **公式定界符统一**：pandoc 会把 Markdown 的 `$…$` / `$$…$$` 转成 `\(...\)` / `\[...\]`；用 `scripts/fix_math_delimiters.py` 回替换为美元符号形式——**行内公式只能用单美元 `$...$`、行间公式只能用双美元 `$$...$$`**（编码规范，详见 `references/stage2-chapter-conversion.md` §7.6）。
+- **表格列格式居中**：pandoc 表格列格式默认左对齐（`l`），**编码规范要求所有表格中的值居中**——用 `scripts/fix_table_columns.py` 把列格式 `l` 批量改为 `c`（`r`/`p{…}` 保留，详见 `references/stage2-chapter-conversion.md` §7.7）。
+- **连续图片并行排布**：若连续多张图片之间没有任何文字内容，则**一行两张并排**（无图题 `\hfill` 连接、有图题 `minipage` 包裹），避免逐张独占一行造成大片纵向留白——用 `scripts/fix_figure_rows.py` 批量处理（详见 `references/stage2-chapter-conversion.md` §6.1）。
 - 图片复制到 `images/`，正文 `\includegraphics` 直接用文件名（`\graphicspath` 已指向 `images/`）。
 
 **2.3 编译验证**
@@ -99,13 +102,17 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 | 定理计数器 | theorem 主计数器 + 4 类共享编号序列（用 `aliascnt` 各建独立计数器名）；example/remark 独立 | 国内教材连续编号惯例；`aliascnt` 让 cleveref 能区分类型名 |
 | 交叉引用 | `\cref` + 中文 `\crefname` + `aliascnt` | 共享编号序列下仍渲染正确类型名（定义/引理/命题/推论） |
 | 章文件 | `chapters/chNN.tex`；`main.tex` 挂 `\chapter{}` + `\input{}` | 章标题只写在 main.tex，章文件内不重复写 `\chapter` |
+| 插图宽度 | 默认 `0.4\textwidth`（convert.py 写显式宽度 + preamble `\setkeys{Gin}` 兜底）；个别大图可显式调大 | 紧凑版面下避免插图霸占整页；显式 width 优先于全局默认 |
+| 连续图片并排 | 一行两张（无图题 `\hfill` 连接、有图题 `minipage` 包裹，`scripts/fix_figure_rows.py`）；奇数落单张不动 | 避免连续图逐张独占行造成大片纵向留白；详见 `stage2-chapter-conversion.md` §6.1 |
+| 页边旁注 | `marginnote` 环境（缩进小块 + `\small` + 加粗【旁注】前缀），**不用 `\marginpar`**；md 侧 `[旁注]` 独立段落标记 | `\marginpar` 盒子不可跨页且边距仅 2.2cm 边栏过窄；详见 `stage2-latex-template.md` §4.8、`stage2-chapter-conversion.md` §10.6 |
 | 标签格式 | `def:` / `thm:` / `lem:` / `prop:` / `cor:` / `ex:` / `rem:` | 便于检索与引用 |
 | 公式定界符 | 行内 `$...$`、行间 `$$...$$`；**禁用** `\(...\)` / `\[...\]` | 编码规范；pandoc 输出需经 `scripts/fix_math_delimiters.py` 回替换；amsmath 环境（equation/align）不受约束 |
+| 表格列格式 | 全部值居中（列格式 `l` → `c`，`scripts/fix_table_columns.py` 批量处理）；`r`/`p{…}` 保留 | 编码规范；pandoc 默认左对齐需回改，详见 `stage2-chapter-conversion.md` §7.7 |
 | 编译 | `scripts/compile_tex.py`（固定 `-output-directory=build` + 自动清根目录残留 + 自动补跑收敛）；手工编译 `xelatex` 连跑 2–3 遍，产物只进 `build/` | 封装命令杜绝漏参数；Windows 下 `-output-directory` 未完全隔离须主动清扫 |
 
 ## 常见陷阱（必读）
 
-完整版见 `references/pitfalls.md`，最关键的十二条：
+完整版见 `references/pitfalls.md`，最关键的十三条：
 
 1. **aux 损坏**：报大量连锁错误（含 `\@newl@bel`、`\@@BOOKMARK`、`Text line contains an invalid character`）时，**先清空 `build/` 目录重编译**，再判断真实错误，勿逐条排查源码。改动 `\documentclass` / `geometry` / preamble 等**全局参数后必须清 build 重建 aux**。
 2. **零错误 ≠ 结构正确**：`main.tex` 漏写 `\chapter{}` 会让全书退化到"第0章"、编号变 `0.x`，且**不产生任何编译报警**。验收必须查目录与编号。
@@ -119,13 +126,14 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 10. **页面核查用文本提取**：分批视觉/OCR 分析可能给出互相矛盾的结论（例如未看某页却判定其空白）；判断某页是否空白应以该页**文本提取**结果为准。
 11. **共享计数器 + cleveref 类型名失效**：definition/lemma/proposition/corollary 与 theorem 共享计数器时，cleveref 无法区分类型，指向这几类的 `\cref` 会**一律渲染成「定理 X」**（`\crefname` 无效，且编译不报错）。必须用 `aliascnt` 为各环境建立独立计数器名；验收时须实测各类 `\cref` 的实际类型名——与陷阱 2 同属"静默错误"，只看编译结果发现不了。
 12. **全角符号残留**：OCR/Markdown 转换会在 `.tex` 正文中混入全角标点（，。：；？！（）""''、—…等），影响排版一致性。用 `scripts/fix_fullwidth.py` 在编译前批量替换为半角；LaTeX 特殊字符的全角版本（％＃＆＿^\~等）自动转义为 `\%` `\#` `\&` `\_` 等。
+13. **编号形态与册号偏移（换书必踩）**：不同教材编号体系不同——《数学分析》下册定理用多段编号（`定理12.1`）而定义/例/推论/注用**单段编号**（`定义1`，章内重新起算），参考实现的"编号至少两段"正则会全部漏识别；下册书原书章号（第十二~二十三章）与 LaTeX 册内章号（1~12）错位。对策：正则放宽为 `\d+(?:\.\d+)*`、id_map 键纳入章号、**多段引用全局查 / 单段引用限章内查**、`\chapter` 只写章名、label 按册内章号编码。详见 `references/stage2-chapter-conversion.md` §10。
 
 ## 参考文档
 
 - `references/pipeline-overview.md` — 全流程总览与产物清单
 - `references/stage1-markdown-conversion.md` — 阶段 1 详解（工具用法、书签缺陷、断点重试、服务端故障识别）
 - `references/stage2-latex-template.md` — 模板设计与 preamble 逐项详解
-- `references/stage2-chapter-conversion.md` — 逐章转换、定理头识别与引用句排除、两遍流程
+- `references/stage2-chapter-conversion.md` — 逐章转换、定理头识别与引用句排除、两遍流程、按书适配（编号形态/标题归一/末章附件/图片结构/册号偏移）、图片处理（默认宽度/连续并排）
 - `references/compilation-and-troubleshooting.md` — 编译流程与排错手册
 - `references/acceptance-checklist.md` — 验收清单
 - `references/pitfalls.md` — 踩坑经验汇总
@@ -134,3 +142,5 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `scripts/compile_tex.py` — 统一编译入口（固定 `-output-directory=build`、自动清根目录残留、自动补跑收敛）
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本
 - `scripts/fix_math_delimiters.py` — 公式定界符统一脚本（`\(...\)`/`\[...\]` → `$…$`/`$$…$$`）
+- `scripts/fix_table_columns.py` — 表格列格式居中脚本（列格式 `l` → `c`，`r`/`p{…}` 保留）
+- `scripts/fix_figure_rows.py` — 连续图片并行排布脚本（无文字间隔的图两两并排，一行两张）

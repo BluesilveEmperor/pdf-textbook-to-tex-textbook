@@ -58,6 +58,9 @@
 % ------------------------------------------------------------
 \usepackage{graphicx}    % 插图
 \graphicspath{{images/}} % 插图统一存放在项目 images/ 目录
+% 插图默认宽度 0.4 版心：未显式给 width 的 \includegraphics 一律按此缩放；
+% 个别大图可在调用处显式写 [width=0.6\textwidth] 等覆盖默认值。
+\setkeys{Gin}{width=0.4\textwidth}
 \providecommand{\pandocbounded}[1]{#1}  % pandoc 3.x 图片包裹命令透传
 
 % ------------------------------------------------------------
@@ -150,7 +153,24 @@
 \crefname{chapter}{章}{章}
 
 % ------------------------------------------------------------
-% 六、书名元信息命令
+% 六、页边旁注环境（仅原书带页边短注/译注时使用）
+% ------------------------------------------------------------
+% 设计：小字号 + 左侧缩进 + 加粗"【旁注】"前缀，与正文明显区分；
+%       刻意不用 \marginpar（盒子不可跨页、双面页边位置受限、版心外
+%       宽度受收窄边距挤压），仅用 \leftskip/\rightskip 与字号切换，
+%       因此是普通段落、天然可跨页。无旁注的书不受影响。
+\newenvironment{marginnote}{%
+  \par\smallskip
+  \small
+  \setlength{\leftskip}{1.5em}%
+  \setlength{\rightskip}{0.5em}%
+  \noindent\textbf{【旁注】}\ignorespaces
+}{%
+  \par\smallskip
+}
+
+% ------------------------------------------------------------
+% 七、书名元信息命令
 % ------------------------------------------------------------
 % main.tex 中调用：\bookinfo{书名}{作者}
 % 同时写入 PDF 元数据（pdftitle / pdfauthor）。
