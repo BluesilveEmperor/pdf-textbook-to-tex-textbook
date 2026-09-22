@@ -105,10 +105,12 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 | 插图宽度 | 默认 `0.4\textwidth`（convert.py 写显式宽度 + preamble `\setkeys{Gin}` 兜底）；个别大图可显式调大 | 紧凑版面下避免插图霸占整页；显式 width 优先于全局默认 |
 | 连续图片并排 | 按连续图片数量动态并排（N 张一行 N 张，无图题 `\hfill` 连接、有图题 `minipage` 包裹，每张宽度 `0.95/N\textwidth`）；非连续图不动 | 避免连续图逐张独占行造成大片纵向留白；详见 `stage2-chapter-conversion.md` §6.1 |
 | 页边旁注 | `marginnote` 环境（缩进小块 + `\small` + 加粗【旁注】前缀），**不用 `\marginpar`**；md 侧 `[旁注]` 独立段落标记 | `\marginpar` 盒子不可跨页且边距仅 2.2cm 边栏过窄；详见 `stage2-latex-template.md` §4.8、`stage2-chapter-conversion.md` §10.6 |
+| 表格放置 | `\begin{table}[H]`（`float` 包，禁止浮动漂移） | 教材表格紧跟引用文字，浮动漂移会打断阅读流 |
+| 表格样式 | `booktabs` 三线表（`\toprule`/`\midrule`/`\bottomrule`），跨页表用 `longtable` | 中文教材标准三线表样式；`\hline` 间距不可控且易出 `Misplaced \noalign` |
 | 标签格式 | `def:` / `thm:` / `lem:` / `prop:` / `cor:` / `ex:` / `rem:` | 便于检索与引用 |
 | 公式定界符 | 行内 `$...$`、行间 `$$...$$`；**禁用** `\(...\)` / `\[...\]` | 编码规范；pandoc 输出需经 `scripts/fix_math_delimiters.py` 回替换；amsmath 环境（equation/align）不受约束 |
 | 表格列格式 | 全部值居中（列格式 `l` → `c`，`scripts/fix_table_columns.py` 批量处理）；`r`/`p{…}` 保留 | 编码规范；pandoc 默认左对齐需回改，详见 `stage2-chapter-conversion.md` §7.7 |
-| 编译 | `scripts/compile_tex.py`（固定 `-output-directory=build` + 自动清根目录残留 + 自动补跑收敛）；手工编译 `xelatex` 连跑 2–3 遍，产物只进 `build/` | 封装命令杜绝漏参数；Windows 下 `-output-directory` 未完全隔离须主动清扫 |
+| 编译 | `scripts/compile_tex.py`（固定 `-output-directory=build` + 自动清根目录残留 + 自动补跑收敛）；`templates/compile.bat` 双击入口（调用 compile_tex.py，找不到则回退直接 xelatex）；手工编译 `xelatex` 连跑 2–3 遍，产物只进 `build/` | 封装命令杜绝漏参数；Windows 下 `-output-directory` 未完全隔离须主动清扫；.bat 免记 Python 路径 |
 
 ## 常见陷阱（必读）
 
@@ -118,7 +120,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 2. **零错误 ≠ 结构正确**：`main.tex` 漏写 `\chapter{}` 会让全书退化到"第0章"、编号变 `0.x`，且**不产生任何编译报警**。验收必须查目录与编号。
 3. **前置页空白页**：book 类默认 `openright` 强制章/目录从奇数页起排，会在标题页与目录页之间插入一页空白 → `\documentclass` 加 `openany`。
 4. **封面多余文字**：`\bookinfo{书名}{作者}` 的**第二参数是作者名**，`\maketitle` 会排在标题下方；只要书名时留空（`\bookinfo{书名}{}`）。
-5. **preamble 必备宏包**：`mathrsfs`（`\mathscr`）、`xcolor`（`\textcolor`）、`\providecommand{\pandocbounded}[1]{#1}`（pandoc 3.x 图片命令透传）。缺任一都会报 `Undefined control sequence`。
+5. **preamble 必备宏包**：`mathrsfs`（`\mathscr`）、`xcolor`（`\textcolor`）、`\providecommand{\pandocbounded}[1]{#1}`（pandoc 3.x 图片命令透传）、`float`（表格 `[H]` 放置）、`booktabs`（三线表横线）、`longtable`（跨页长表）。缺任一都会报 `Undefined control sequence`。数学模式内 `\text{中文}` 须配合 `\xeCJKsetup{CJKmath=true}`（xelatex 专属，lualatex 用 `\ifdefined` 守卫跳过），否则中文落入西文字体产生 "Missing character" 空白。
 6. **环境嵌套断裂**：`\begin{theorem}` / `\begin{proof}` 等缺对应 `\end`，会引发 `\begin{...} ended by \end{document}` 连锁错误，须补齐闭合标签。
 7. **OCR 公式错误**：高频错误包括 `\var D`（应为 `\mathcal{D}`）、`\$` / `\_` / `\textgreater{}` 误入数学模式、`\boldsymbol` 过度嵌套导致内存膨胀。
 8. **收窄边距 → 溢出**：长行内公式在数学模式内**不自动换行**，文本区变窄会顶出边界。按量级分级：**≤ 4pt** 属可忽略；溢出量超过页边距宽度（约 62pt = 2.2cm）会被 PDF 裁切丢内容，**必须**定位源头修复。全局 `\emergencystretch` 可消除大部分。
@@ -138,6 +140,8 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `references/acceptance-checklist.md` — 验收清单
 - `references/pitfalls.md` — 踩坑经验汇总
 - `templates/preamble.tex`、`templates/main.tex` — 可直接复用的模板
+- `templates/compile.bat` — 一键编译入口（双击即编译，产物进 build/ + 自动清理残留；复制到项目根目录使用）
+- `templates/preamble.tex` 已内置 `float` / `booktabs` / `longtable` 三包与 `\xeCJKsetup{CJKmath=true}` 条件守卫，表格排版开箱即用
 - `scripts/convert.py` — 参考转换脚本（两遍流程：扫描全局 id_map + 后处理）
 - `scripts/compile_tex.py` — 统一编译入口（固定 `-output-directory=build`、自动清根目录残留、自动补跑收敛）
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本

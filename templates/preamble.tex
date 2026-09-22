@@ -50,6 +50,13 @@
 \usepackage{mathrsfs}    % 花写字母 \mathscr（OCR 识别的拓扑/代数符号）
 \usepackage{xcolor}      % 文本颜色(\textcolor)—— 标记 OCR 损坏公式待校对
 
+% 数学模式内 \text{中文} 等须自动切换中文字体，否则中文落入数学西文字体（lmroman）
+% 产生 "Missing character" 空白。xeCJK 仅 xelatex 存在；lualatex 下无此命令，
+% 用条件守卫避免未定义错误。
+\ifdefined\xeCJKsetup
+\xeCJKsetup{CJKmath=true}
+\fi
+
 % 长公式允许适度跨页（教材排版常用）
 \allowdisplaybreaks[1]
 
@@ -57,6 +64,7 @@
 % 二、图形
 % ------------------------------------------------------------
 \usepackage{graphicx}    % 插图
+\usepackage{float}          % 表格 [H] 精确放置（禁止浮动漂移）
 \graphicspath{{images/}} % 插图统一存放在项目 images/ 目录
 % 插图默认宽度 0.4 版心：未显式给 width 的 \includegraphics 一律按此缩放；
 % 个别大图可在调用处显式写 [width=0.6\textwidth] 等覆盖默认值。
@@ -64,10 +72,12 @@
 \providecommand{\pandocbounded}[1]{#1}  % pandoc 3.x 图片包裹命令透传
 
 % ------------------------------------------------------------
-% 三、列表
+% 三、列表与表格
 % ------------------------------------------------------------
 \usepackage{enumitem}    % 列表间距与标号格式微调
 \setlist{itemsep=2pt, topsep=4pt, parsep=0pt}
+\usepackage{booktabs}    % 表格横线（toprule/midrule/bottomrule）
+\usepackage{longtable}   % 跨页长表
 
 % ------------------------------------------------------------
 % 四、定理族环境（国内教材编号惯例）

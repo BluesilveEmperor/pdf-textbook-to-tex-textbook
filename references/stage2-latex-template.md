@@ -10,6 +10,7 @@
 <书名>/
 ├── main.tex          ← 文档类 + 结构 + \chapter
 ├── preamble.tex      ← 宏包与配置（本文档主角）
+├── compile.bat       ← 一键编译入口（双击即编译，可选）
 ├── chapters/chNN.tex ← 逐章内容（章节转换产物）
 ├── images/           ← 正文插图
 └── build/            ← 编译产物（PDF / aux / toc / out / log）
@@ -21,7 +22,10 @@
 mkdir <书名>\chapters, <书名>\images, <书名>\build
 copy templates\preamble.tex <书名>\
 copy templates\main.tex     <书名>\
+copy templates\compile.bat  <书名>\
 ```
+
+`compile.bat` 是可选的一键编译入口：双击即编译当前目录的 `main.tex`，产物只进 `build/`、根目录零残留。它优先调用 skill 的 `scripts/compile_tex.py`（完整模式：自动补跑收敛 + 摘要），找不到则回退到直接 `xelatex` 命令。支持参数透传：`compile.bat lualatex` 切换引擎。
 
 ## 2. 文档类：`ctexbook` 及选项
 
@@ -120,6 +124,16 @@ copy templates\main.tex     <书名>\
 | （`amsmath` 系） | `\text{}` 等 | 数学模式内的中文/文本 |
 | `\pandocbounded` | 见 4.3 | pandoc 3.x 自动插图包裹命令 |
 
+**数学模式内中文切换**：
+
+```latex
+\ifdefined\xeCJKsetup
+\xeCJKsetup{CJKmath=true}
+\fi
+```
+
+xeCJK 默认不在数学模式内扫描中文，导致 `\text{中文}` 中的中文落入数学西文字体（lmroman）产生 "Missing character" 空白。`\xeCJKsetup{CJKmath=true}` 显式开启数学模式内中文扫描。该命令仅 xelatex 存在（xeCJK 是 xelatex 专属），lualatex 下无此命令，用 `\ifdefined` 条件守卫避免未定义错误——模板同时兼容 xelatex 与 lualatex。
+
 ### 4.3 图形（二）
 
 ```latex
@@ -132,8 +146,9 @@ copy templates\main.tex     <书名>\
 - **`\graphicspath{{images/}}`**：正文一律写 `\includegraphics{<哈希名>}`，**不写 `images/` 前缀**。
 - **`\setkeys{Gin}{width=0.4\textwidth}`**：插图**默认宽度 0.4 版心**（紧凑版面下避免插图霸占整页）。只对**未显式给 width** 的图生效；个别大图在调用处显式写 `[width=0.6\textwidth]` 等即可覆盖默认值。转换脚本 `convert.py` 写出的图均带显式宽度，此行是对手工加图 / pandoc 原生输出的兜底。
 - **`\providecommand{\pandocbounded}[1]{#1}`**：pandoc 3.x 会把图片包成 `\pandocbounded{\includegraphics[...]{...}}`。模板不需要它的溢出保护语义，只需让它"透传"内部内容，否则报 `Undefined control sequence`。用 `\providecommand`（而非 `\newcommand`）是为了兼容将来 pandoc 版本可能自带定义的情况。
+- **`\usepackage{float}`**：提供 `[H]` 浮动 specifier，使 `\begin{table}[H]` 将表格**精确放置在源码位置**，禁止 LaTeX 的浮动漂移机制（`[t]`/`[h]`/`[b]` 会把表格推到页顶/页底甚至下一页）。教材中表格通常紧跟引用文字，漂移会打断阅读流，`[H]` 是教材排版的首选放置方式。
 
-### 4.4 列表（三）
+### 4.4 列表与表格（三）
 
 ```latex
 \usepackage{enumitem}
@@ -141,6 +156,41 @@ copy templates\main.tex     <书名>\
 ```
 
 压紧列表项间距，贴合教材版式，避免"枚举列表占半页"。
+
+**表格宏包**：
+
+```latex
+\usepackage{booktabs}    % 三线表横线（toprule/midrule/bottomrule）
+\usepackage{longtable}   % 跨页长表
+```
+
+- **`booktabs`**：提供 `\toprule` / `\midrule` / `\bottomrule` 三条横线命令，取代 `\hline`。三线表是中文教材的标准表格样式（上下各一条粗线、表头下一条细线、无竖线），`\hline` 间距与粗细不可控且与 `\\` 混用易出 `Misplaced \noalign` 错误，booktabs 是规范做法。
+- **`longtable`**：使表格可跨页拆分，续页自动重复表头。教材中常有行数较多的数据表（如分布表、参数表），普通 `tabular` 不可跨页、`table` 浮动环境有 `[H]` 但也不跨页，`longtable` 是跨页长表的唯一标准方案。
+
+**跨页长表模式**（longtable 续页表头）：
+
+```latex
+\begin{longtable}{cccc}
+\caption{表标题}\\
+\toprule
+\textbf{列1} & \textbf{列2} & \textbf{列3} & \textbf{列4} \\
+\midrule
+\endfirsthead    % 首页表头结束
+\caption[]{表标题（续）}\\
+\toprule
+\textbf{列1} & \textbf{列2} & \textbf{列3} & \textbf{列4} \\
+\midrule
+\endhead         % 续页表头结束
+\bottomrule
+\endfoot         % 每页表尾
+数据行1 \\
+数据行2 \\
+\bottomrule
+\endlastfoot     % 末页表尾
+\end{longtable}
+```
+
+关键命令：`\endfirsthead`（首页表头）、`\endhead`（续页表头）、`\endfoot`（每页表尾）、`\endlastfoot`（末页表尾）。续页 `\caption[]` 用空可选参数避免目录中重复出现表标题。
 
 ### 4.5 定理族环境（四）—— 计数器设计
 
@@ -308,6 +358,7 @@ ctexbook(documentclass)
 2. **所有 `\newaliascnt` 与 `\newtheorem` 必须在 `cleveref` 之前完成**——否则 cleveref 收集不到环境/计数器类型，`\crefname` 报"未知环境类型"或引用名退化为英文/编号。
 3. **`aliascnt` 必须在 `\newaliascnt` 之前、`amsthm` 之后**加载；顺序错了 alias 计数器建立不起来，会退回"共享同一计数器名"的老毛病（类型名失效）。
 4. **`hyperref` 必须在 `cleveref` 之前**。
+5. **`booktabs` / `longtable` / `float` 与 `hyperref` / `cleveref` 无加载顺序约束**，放在 enumitem 之后（列表与表格区）即可。但 `longtable` 与 `hyperref` 配合时，跨页表的 `\caption` 会自动写入 `.lot` 文件，须连跑 2–3 遍使表目录收敛。
 
 实践建议：**不要随意重排 preamble 的段落顺序**。模板是按上述顺序写好的，调整应追加在对应段落内。
 
