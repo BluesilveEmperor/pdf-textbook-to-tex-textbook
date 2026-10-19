@@ -430,7 +430,7 @@ python scripts/fix_fullwidth.py <LaTeX项目根目录>
 * 相对路径 `build` 是纯 ASCII，putenv 立刻成功，后续由 kpathsea 自行解析成绝对路径——
   所以**同一个中文目录下，相对路径能编过，绝对路径编不过**。
 
-**修复**（已合入 `scripts/compile_tex.py`）
+**修复**（已合入 `templates/build.py`，复制到项目根即用）
 
 1. `resolve_engine()`：`--engine` 同时接受引擎名与绝对路径；只给名字时按
    「PATH → 常见安装根目录（`C:\texlive` / `D:\texlive` / MiKTeX…）」自动定位，

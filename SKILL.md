@@ -79,7 +79,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 **2.3 编译验证**
 
-- **统一编译入口**：`python scripts/compile_tex.py [项目根] [--engine xelatex|lualatex]`——脚本固定带 `-output-directory=build`（杜绝忘加参数导致产物散落根目录），每遍后自动清扫根目录残留（Windows 下 `-output-directory` 未完全隔离，会漏出 synctex/fdb/fls 等），自动检测 `Rerun` 提示并补跑至收敛（≤3 遍），结尾输出页数/错误/undefined 摘要。手工编译仍须遵守：`xelatex -interaction=nonstopmode -output-directory=build main.tex` **连跑 2–3 遍**，收尾按 `acceptance-checklist.md` §4.1 清根目录残留。
+- **统一编译入口**：把 skill 的 `templates/build.py` 复制到书项目根（与 `main.tex` 同级），然后 `python build.py [--engine xelatex|lualatex] [--passes N]`——脚本自包含、零路径配置、零外部依赖（仅标准库），项目根默认取脚本所在目录（工作目录任意、双击运行均可）。固定带 `-output-directory=build`（杜绝忘加参数导致产物散落根目录），每遍后自动清扫根目录残留（Windows 下 `-output-directory` 未完全隔离，会漏出 synctex/fdb/fls 等），自动检测 `Rerun` 提示并补跑至收敛（默认 ≤3 遍），结尾输出页数/错误/undefined 摘要。智能文档发现：有 `main.tex` → 单文档模式；无 → 批量编译根目录所有 `.tex`（排除 `preamble.tex`，支持试卷场景）。引擎自动定位：显式路径 → PATH → 常见安装根目录（TeX Live/MiKTeX）→ WSL 候选（见陷阱 14）。`--clean-only` 只清扫根目录残留（对根目录**所有** `.tex` 的 jobname 逐一清扫，含 `preamble.tex`）。手工编译仍须遵守：`xelatex -interaction=nonstopmode -output-directory=build main.tex` **连跑 2–3 遍**，收尾按 `acceptance-checklist.md` §4.1 清根目录残留。
 - 本阶段目标：**0 错误、0 undefined**（交叉引用全收敛）。排版类告警（`Overfull`/`Underfull`/`Missing character`/字体替换）通常**无法归零**，须按 `references/compilation-and-troubleshooting.md` 分级评估：量级可忽略的登记即可，**超出页边距（约 2.2cm）的溢出必须修**（见陷阱 8）。
 
 ### 阶段 3：验收与交付
@@ -110,7 +110,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 | 标签格式 | `def:` / `thm:` / `lem:` / `prop:` / `cor:` / `ex:` / `rem:` | 便于检索与引用 |
 | 公式定界符 | 行内 `$...$`、行间 `$$...$$`；**禁用** `\(...\)` / `\[...\]` | 编码规范；pandoc 输出需经 `scripts/fix_math_delimiters.py` 回替换；amsmath 环境（equation/align）不受约束 |
 | 表格列格式 | 全部值居中（列格式 `l` → `c`，`scripts/fix_table_columns.py` 批量处理）；`r`/`p{…}` 保留 | 编码规范；pandoc 默认左对齐需回改，详见 `stage2-chapter-conversion.md` §7.7 |
-| 编译 | `scripts/compile_tex.py`（固定 `-output-directory=build` + 自动清根目录残留 + 自动补跑收敛）；`templates/compile.bat` 双击入口（调用 compile_tex.py，找不到则回退直接 xelatex）；手工编译 `xelatex` 连跑 2–3 遍，产物只进 `build/` | 封装命令杜绝漏参数；Windows 下 `-output-directory` 未完全隔离须主动清扫；.bat 免记 Python 路径 |
+| 编译 | `templates/build.py` 复制到项目根后 `python build.py`（固定 `-output-directory=build` + 自动清根目录残留 + 自动补跑收敛 + 引擎自动定位；智能文档发现：有 main.tex 单文档 / 无则批量编译根目录 `.tex` 排除 preamble.tex）；手工编译 `xelatex` 连跑 2–3 遍，产物只进 `build/` | 自包含可复制、零路径配置（换机器不坏）；智能文档发现支持试卷批量场景；项目根=脚本所在目录，双击友好；封装命令杜绝漏参数；Windows 下 `-output-directory` 未完全隔离须主动清扫 |
 
 ## 常见陷阱（必读）
 
@@ -129,7 +129,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 11. **共享计数器 + cleveref 类型名失效**：definition/lemma/proposition/corollary 与 theorem 共享计数器时，cleveref 无法区分类型，指向这几类的 `\cref` 会**一律渲染成「定理 X」**（`\crefname` 无效，且编译不报错）。必须用 `aliascnt` 为各环境建立独立计数器名；验收时须实测各类 `\cref` 的实际类型名——与陷阱 2 同属"静默错误"，只看编译结果发现不了。
 12. **全角符号残留**：OCR/Markdown 转换会在 `.tex` 正文中混入全角标点（，。：；？！（）""''、—…等），影响排版一致性。用 `scripts/fix_fullwidth.py` 在编译前批量替换为半角；LaTeX 特殊字符的全角版本（％＃＆＿^\~等）自动转义为 `\%` `\#` `\&` `\_` 等。
 13. **编号形态与册号偏移（换书必踩）**：不同教材编号体系不同——《数学分析》下册定理用多段编号（`定理12.1`）而定义/例/推论/注用**单段编号**（`定义1`，章内重新起算），参考实现的"编号至少两段"正则会全部漏识别；下册书原书章号（第十二~二十三章）与 LaTeX 册内章号（1~12）错位。对策：正则放宽为 `\d+(?:\.\d+)*`、id_map 键纳入章号、**多段引用全局查 / 单段引用限章内查**、`\chapter` 只写章名、label 按册内章号编码。详见 `references/stage2-chapter-conversion.md` §10。
-14. **引擎不在 PATH + `-output-directory` 用中文绝对路径 → 返回码 1 但日志 0 错误**（2026-10-06 实测，TeX Live 2026 / Windows）：TeX Live 2025+ 会把 `-output-directory` 的值 `putenv` 成 `TEXMF_OUTPUT_DIRECTORY`，Windows CRT 的 putenv 不接受非 ASCII 值，于是 `xelatex.exe: fatal: putenv(...)`、返回码 1，**而 `build/main.log` 依旧是 `Output written on ... (N pages)`**——只看日志会误判成功。对策：`compile_tex.py` 已内置 `resolve_engine()` 自动定位引擎（PATH → `C:\texlive` / `D:\texlive` / MiKTeX…）并把引擎目录原地并入 `os.environ['PATH']`，且 `-output-directory` 固定写**相对路径** `build`；返回码非 0 而 `!` 计数为 0 时会打印 stderr 尾部。**排查口诀：返回码≠0 且日志 0 错误 → 先看 stderr，别信日志。**
+14. **引擎不在 PATH + `-output-directory` 用中文绝对路径 → 返回码 1 但日志 0 错误**（2026-10-06 实测，TeX Live 2026 / Windows）：TeX Live 2025+ 会把 `-output-directory` 的值 `putenv` 成 `TEXMF_OUTPUT_DIRECTORY`，Windows CRT 的 putenv 不接受非 ASCII 值，于是 `xelatex.exe: fatal: putenv(...)`、返回码 1，**而 `build/main.log` 依旧是 `Output written on ... (N pages)`**——只看日志会误判成功。对策：`templates/build.py` 已内置 `resolve_engine()` 自动定位引擎（PATH → `C:\texlive` / `D:\texlive` / MiKTeX…）并把引擎目录原地并入 `os.environ['PATH']`，且 `-output-directory` 固定写**相对路径** `build`；返回码非 0 而 `!` 计数为 0 时会打印 stderr 尾部。**排查口诀：返回码≠0 且日志 0 错误 → 先看 stderr，别信日志。**
 15. **MinerU pipeline 模型把数学环境内的中文识别成乱码**（2026-10-06 实测）：`为既约分数` 进 display 公式后 pipeline 输出 `\varkappa / \mathrm{B}\dag\Sigma…`，vlm 输出 `\text{为既约分数,}`。中文在数学环境内是习题书常态，属**系统性**差异。对策：优先 vlm；某块反复失败才降级 pipeline，并把降级段登记为重点校对对象。判据：同一页双模型各解析一次对比即可，别凭经验猜。另须确认续跑逻辑不会在换模型时把已成功块整体覆盖。
 16. **习题书「单元练习」编号与例题同形（撞号）**：单元练习题目编号 `1.1.1、1.1.2…` 与正文例题 `例 1.1.1` 同形，且 MinerU 会把题干写成 `例 1.1.1 求复合函数表达式：`。不区分会把习题包成 `example` 环境并与正文例题撞号（实测 7 处），并使后续例号整体推移。对策：维护 `in_unit` 区标志（`\unitpractice` 置位、`\section` 复位），区内 `例 X.Y.Z` 一律视为题干，不建环境、不进 id_map。
 17. **段落首行取空导致标题整段漏分类**：`^## 原文\s*$` 在 MULTILINE 下 `\s*$` 只吞一个换行，下一段以 `\n` 开头，`lines[0] == ''` 使 `startswith('#')` 不成立，整段标题原样穿过被 pandoc 转成 `\subsection{第一章 …}`（全书 7 处，表现为目录里多出 "1.0.1 章名"）。对策：处理段落前先 `strip()` 再取首行。**正文出现"章号 + 0.x"编号时先怀疑段落切分，不是标题正则。**
@@ -145,10 +145,10 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `references/acceptance-checklist.md` — 验收清单
 - `references/pitfalls.md` — 踩坑经验汇总
 - `templates/preamble.tex`、`templates/main.tex` — 可直接复用的模板
-- `templates/compile.bat` — 一键编译入口（双击即编译，产物进 build/ + 自动清理残留；复制到项目根目录使用）
+- `templates/build.py` — 一键编译入口（自包含，复制到项目根后 `python build.py` 即用：智能文档发现、产物进 build/ + 自动清理残留 + 自动补跑收敛 + 引擎自动定位；双击/任意工作目录均可）
 - `templates/preamble.tex` 已内置 `float` / `booktabs` / `longtable` 三包与 `\xeCJKsetup{CJKmath=true}` 条件守卫，表格排版开箱即用
 - `scripts/convert.py` — 参考转换脚本（两遍流程：扫描全局 id_map + 后处理）
-- `scripts/compile_tex.py` — 统一编译入口（固定 `-output-directory=build`、自动清根目录残留、自动补跑收敛）
+
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本
 - `scripts/fix_math_delimiters.py` — 公式定界符统一脚本（`\(...\)`/`\[...\]` → `$…$`/`$$…$$`）
 - `scripts/fix_table_columns.py` — 表格列格式居中脚本（列格式 `l` → `c`，`r`/`p{…}` 保留）

@@ -4,15 +4,15 @@
 
 ## 1. 编译命令
 
-**推荐：统一编译入口脚本**（自动补跑收敛 + 自动清扫根目录残留）：
+**推荐：统一编译入口脚本**（自动补跑收敛 + 自动清扫根目录残留）——把 skill 的 `templates/build.py` 复制到书项目根（与 `main.tex` 同级），然后：
 
 ```powershell
-python scripts/compile_tex.py <项目根>                # xelatex，最多 3 遍
-python scripts/compile_tex.py <项目根> --engine lualatex   # OCR 严重、xelatex 报字体内部错误的书
-python scripts/compile_tex.py <项目根> --clean-only    # 只清扫根目录残留，不编译
+python build.py                    # xelatex，最多 3 遍（项目根 = 脚本所在目录，工作目录任意）
+python build.py --engine lualatex  # OCR 严重、xelatex 报字体内部错误的书
+python build.py --clean-only       # 只清扫根目录残留，不编译
 ```
 
-脚本固定带 `-output-directory=build`（杜绝漏参数）、每遍后按清单清除根目录 `<jobname>.aux/.log/.out/.toc/.pdf/.synctex*/.fdb_latexmk/.fls` 残留、检测官方 `Rerun` 提示自动补跑，结尾输出页数/错误/undefined 摘要。
+脚本自包含、零路径配置、零外部依赖（仅标准库），固定带 `-output-directory=build`（杜绝漏参数）、每遍后按清单清除根目录 `<jobname>.aux/.log/.out/.toc/.pdf/.fls/.synctex/.synctex.gz/.fdb_latexmk/.xdv/.blg/.bbl` 残留、检测官方 `Rerun` 提示自动补跑，结尾输出页数/错误/undefined 摘要。智能文档发现：有 `main.tex` → 单文档模式；无 → 批量编译根目录所有 `.tex`（排除 `preamble.tex`，试卷场景）。`--engine` 同时接受引擎名与绝对路径，不在 PATH 时按常见安装根目录（TeX Live/MiKTeX）→ WSL 候选自动定位。
 
 **手工编译**（无法用脚本时）——工作目录 = 项目根（`main.tex` 所在目录）：
 

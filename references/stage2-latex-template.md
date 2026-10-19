@@ -10,7 +10,7 @@
 <书名>/
 ├── main.tex          ← 文档类 + 结构 + \chapter
 ├── preamble.tex      ← 宏包与配置（本文档主角）
-├── compile.bat       ← 一键编译入口（双击即编译，可选）
+├── build.py          ← 一键编译入口（python build.py，可选复制）
 ├── chapters/chNN.tex ← 逐章内容（章节转换产物）
 ├── images/           ← 正文插图
 └── build/            ← 编译产物（PDF / aux / toc / out / log）
@@ -22,10 +22,10 @@
 mkdir <书名>\chapters, <书名>\images, <书名>\build
 copy templates\preamble.tex <书名>\
 copy templates\main.tex     <书名>\
-copy templates\compile.bat  <书名>\
+copy templates\build.py     <书名>\
 ```
 
-`compile.bat` 是可选的一键编译入口：双击即编译当前目录的 `main.tex`，产物只进 `build/`、根目录零残留。它优先调用 skill 的 `scripts/compile_tex.py`（完整模式：自动补跑收敛 + 摘要），找不到则回退到直接 `xelatex` 命令。支持参数透传：`compile.bat lualatex` 切换引擎。
+`build.py` 是可选的一键编译入口：自包含、零路径配置、零外部依赖（仅标准库），复制到项目根后 `python build.py` 即用（项目根默认取脚本所在目录，工作目录任意、双击运行均指向正确目录），产物只进 `build/`、根目录零残留。智能文档发现：有 `main.tex` → 单文档模式；无 → 批量编译根目录所有 `.tex`（排除被 `main.tex` input 的 `preamble.tex`，支持试卷场景）。自动检测 `Rerun` 提示补跑至收敛（默认最多 3 遍），结尾输出页数/错误/undefined 摘要；引擎自动定位（显式路径 → PATH → 常见安装根目录 TeX Live/MiKTeX → WSL 候选）。常用参数：`--engine lualatex` 切换引擎、`--passes 5` 调最大遍数、`--clean-only` 只清扫根目录残留。
 
 ## 2. 文档类：`ctexbook` 及选项
 
