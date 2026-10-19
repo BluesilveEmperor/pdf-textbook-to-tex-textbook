@@ -114,7 +114,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 ## 常见陷阱（必读）
 
-完整版见 `references/pitfalls.md`，最关键的十三条：
+完整版见 `references/pitfalls.md`，最关键的十八条：
 
 1. **aux 损坏**：报大量连锁错误（含 `\@newl@bel`、`\@@BOOKMARK`、`Text line contains an invalid character`）时，**先清空 `build/` 目录重编译**，再判断真实错误，勿逐条排查源码。改动 `\documentclass` / `geometry` / preamble 等**全局参数后必须清 build 重建 aux**。
 2. **零错误 ≠ 结构正确**：`main.tex` 漏写 `\chapter{}` 会让全书退化到"第0章"、编号变 `0.x`，且**不产生任何编译报警**。验收必须查目录与编号。
@@ -129,6 +129,11 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 11. **共享计数器 + cleveref 类型名失效**：definition/lemma/proposition/corollary 与 theorem 共享计数器时，cleveref 无法区分类型，指向这几类的 `\cref` 会**一律渲染成「定理 X」**（`\crefname` 无效，且编译不报错）。必须用 `aliascnt` 为各环境建立独立计数器名；验收时须实测各类 `\cref` 的实际类型名——与陷阱 2 同属"静默错误"，只看编译结果发现不了。
 12. **全角符号残留**：OCR/Markdown 转换会在 `.tex` 正文中混入全角标点（，。：；？！（）""''、—…等），影响排版一致性。用 `scripts/fix_fullwidth.py` 在编译前批量替换为半角；LaTeX 特殊字符的全角版本（％＃＆＿^\~等）自动转义为 `\%` `\#` `\&` `\_` 等。
 13. **编号形态与册号偏移（换书必踩）**：不同教材编号体系不同——《数学分析》下册定理用多段编号（`定理12.1`）而定义/例/推论/注用**单段编号**（`定义1`，章内重新起算），参考实现的"编号至少两段"正则会全部漏识别；下册书原书章号（第十二~二十三章）与 LaTeX 册内章号（1~12）错位。对策：正则放宽为 `\d+(?:\.\d+)*`、id_map 键纳入章号、**多段引用全局查 / 单段引用限章内查**、`\chapter` 只写章名、label 按册内章号编码。详见 `references/stage2-chapter-conversion.md` §10。
+14. **引擎不在 PATH + `-output-directory` 用中文绝对路径 → 返回码 1 但日志 0 错误**（2026-10-06 实测，TeX Live 2026 / Windows）：TeX Live 2025+ 会把 `-output-directory` 的值 `putenv` 成 `TEXMF_OUTPUT_DIRECTORY`，Windows CRT 的 putenv 不接受非 ASCII 值，于是 `xelatex.exe: fatal: putenv(...)`、返回码 1，**而 `build/main.log` 依旧是 `Output written on ... (N pages)`**——只看日志会误判成功。对策：`compile_tex.py` 已内置 `resolve_engine()` 自动定位引擎（PATH → `C:\texlive` / `D:\texlive` / MiKTeX…）并把引擎目录原地并入 `os.environ['PATH']`，且 `-output-directory` 固定写**相对路径** `build`；返回码非 0 而 `!` 计数为 0 时会打印 stderr 尾部。**排查口诀：返回码≠0 且日志 0 错误 → 先看 stderr，别信日志。**
+15. **MinerU pipeline 模型把数学环境内的中文识别成乱码**（2026-10-06 实测）：`为既约分数` 进 display 公式后 pipeline 输出 `\varkappa / \mathrm{B}\dag\Sigma…`，vlm 输出 `\text{为既约分数,}`。中文在数学环境内是习题书常态，属**系统性**差异。对策：优先 vlm；某块反复失败才降级 pipeline，并把降级段登记为重点校对对象。判据：同一页双模型各解析一次对比即可，别凭经验猜。另须确认续跑逻辑不会在换模型时把已成功块整体覆盖。
+16. **习题书「单元练习」编号与例题同形（撞号）**：单元练习题目编号 `1.1.1、1.1.2…` 与正文例题 `例 1.1.1` 同形，且 MinerU 会把题干写成 `例 1.1.1 求复合函数表达式：`。不区分会把习题包成 `example` 环境并与正文例题撞号（实测 7 处），并使后续例号整体推移。对策：维护 `in_unit` 区标志（`\unitpractice` 置位、`\section` 复位），区内 `例 X.Y.Z` 一律视为题干，不建环境、不进 id_map。
+17. **段落首行取空导致标题整段漏分类**：`^## 原文\s*$` 在 MULTILINE 下 `\s*$` 只吞一个换行，下一段以 `\n` 开头，`lines[0] == ''` 使 `startswith('#')` 不成立，整段标题原样穿过被 pandoc 转成 `\subsection{第一章 …}`（全书 7 处，表现为目录里多出 "1.0.1 章名"）。对策：处理段落前先 `strip()` 再取首行。**正文出现"章号 + 0.x"编号时先怀疑段落切分，不是标题正则。**
+18. **引用句前缀排除法对「例」类固定形态头部是误杀源**：`REF_PREFIX_RE` 的"由/从/利用…"前缀会把 `例 6.3.7 从原点向单叶双曲面 …` 这类动词开头的真例头整条误杀（实测 60+ 处）。对策：例头形态固定时只保留"标点开头"排除 + 重复编号检测，停用前缀表；「注」等自由形态仍可用。写完规则必须跑 `missing_refs` 清单逐条核对，以实测误杀数定案。
 
 ## 参考文档
 
