@@ -1,6 +1,6 @@
 ---
 name: pdf-textbook-to-tex-textbook
-description: 把授权的数学/理工教材 PDF（含扫描图像型）转成可编译的 LaTeX 精排项目并产出 PDF。当用户提出"把 PDF 教材/讲义转成 LaTeX 重排版""生成带定理环境的 tex 项目""按章拆分成 tex 并编译成 PDF""PDF 教材转 tex"时触发。两阶段流程：先用 mineru-textbook-to-md 把 PDF 转 Markdown，再逐章转 LaTeX（ctexbook + amsthm 定理族 + cleveref 交叉引用）并编译验证；内置定理编号惯例、定理环境规范化、编译排错与验收清单。
+description: 把授权的数学/理工教材 PDF（含扫描图像型）转成可编译的 LaTeX 精排项目并产出 PDF。当用户提出"把 PDF 教材/讲义转成 LaTeX 重排版""生成带定理环境的 tex 项目""按章拆分成 tex 并编译成 PDF""PDF 教材转 tex"时触发。两阶段流程：先用内置脚本 scripts/pdf_to_md.py（MinerU 云端 API + 本地书签语义分块）把 PDF 转 Markdown，再逐章转 LaTeX（ctexbook + amsthm 定理族 + cleveref 交叉引用）并编译验证；内置定理编号惯例、定理环境规范化、编译排错与验收清单。自带全部实现，不依赖任何外部 skill。
 ---
 
 # PDF 教材 → LaTeX 精排项目
@@ -9,7 +9,7 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 把一本（或多本）授权的教材 PDF 转成**可编译、可编辑、排版规范**的 LaTeX 项目，最终产出 PDF。分两个阶段：
 
-1. **阶段 1（PDF → Markdown）**：调用同目录工具 `mineru-textbook-to-md`（MinerU 云端 API + PDF 书签语义分块），产出按篇/章组织的 Markdown 文档包（`full.md` + 章文件夹 + 本地图片 + 质量报告）。
+1. **阶段 1（PDF → Markdown）**：用**本 skill 内置**的 `scripts/pdf_to_md.py`（MinerU 云端 API + PDF 书签语义分块），产出按篇/章组织的 Markdown 文档包（`full.md` + 章文件夹 + 本地图片 + 质量报告）。
 2. **阶段 2（Markdown → LaTeX）**：pandoc 初转 + 定理环境规范化 + 公式修复 + 逐章编译，产出 ctexbook 项目与成品 PDF。
 
 适用教材特征：数学/理工类，含大量定理/定义/证明/公式与插图，通常为**扫描图像型 PDF**（每页为一张位图，靠 OCR/VLM 识别，公式有少量误差属预期，精排阶段需对照原书修正）。
@@ -27,11 +27,12 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 | 依赖 | 用途 | 备注 |
 |---|---|---|
-| Python 3.10+ | 转换脚本 | |
+| Python 3.10+ | 阶段 1/2 脚本 | |
+| `pypdf`、`requests` | 阶段 1 依赖 | `python -m pip install -r requirements.txt` |
 | MinerU Token | 阶段 1 上传解析 | 环境变量 `MINERU_OFFICIAL_API_TOKEN`，**勿写入任何文件** |
 | TeX Live（`xelatex`） | 阶段 2 编译 | 实测 `fontset=windows` 可用；字体异常时可改 `fandol` |
 | `pandoc` | Markdown → LaTeX 初转 | 3.x 会引入 `\pandocbounded`（见陷阱 5） |
-| `mineru-textbook-to-md` | 阶段 1 工具 | 用法见 `references/stage1-markdown-conversion.md` |
+| `scripts/pdf_to_md.py` | 阶段 1 入口（内置实现，无需外部 skill） | 用法见 `references/stage1-markdown-conversion.md` |
 
 **安全与授权**：上传 PDF 到 MinerU 前必须确认用户已授权；产出仅限个人学习使用，不对外分发。Token 只从环境变量读取，禁止打印或落盘。
 
@@ -45,7 +46,13 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 
 ### 阶段 1：PDF → Markdown
 
-详见 `references/stage1-markdown-conversion.md`。要点：
+详见 `references/stage1-markdown-conversion.md`。统一入口（在任意工作目录均可运行）：
+
+```bash
+python <skill-root>/scripts/pdf_to_md.py --pdf <pdf> --base-name <书名> --output <工作根> [--plan-only]
+```
+
+要点：
 
 1. **先本地预览分块**：用 `--plan-only` 生成分块计划（纯本地书签解析，不上传、不需 Token），人工审核边界是否落在书签起始页上。
 2. **正式上传**：工具按书签语义分块，大文件自动切多块并按序合并；失败可**断点重试**（已完成分块的缓存会被复用，只重传缺失页段）。
@@ -148,6 +155,10 @@ description: 把授权的数学/理工教材 PDF（含扫描图像型）转成�
 - `templates/build.py` — 一键编译入口（自包含，复制到项目根后 `python build.py` 即用：智能文档发现、产物进 build/ + 自动清理残留 + 自动补跑收敛 + 引擎自动定位；双击/任意工作目录均可）
 - `templates/preamble.tex` 已内置 `float` / `booktabs` / `longtable` 三包与 `\xeCJKsetup{CJKmath=true}` 条件守卫，表格排版开箱即用
 - `scripts/convert.py` — 参考转换脚本（两遍流程：扫描全局 id_map + 后处理）
+- `scripts/pdf_to_md.py` — **阶段 1 入口**（PDF → Markdown，内置实现，不依赖外部 skill）
+- `scripts/mineru_textbook_to_md/` — 阶段 1 的 vendored 实现（MinerU API 客户端 + 书签语义分块 + 拆分/报告）
+- `scripts/tests/test_chapter_planner.py` — 阶段 1 分块/拆分回归测试（`python -m unittest discover -s scripts/tests`）
+- `requirements.txt` — 阶段 1 的 Python 依赖（`pypdf`、`requests`）
 
 - `scripts/fix_fullwidth.py` — 全角符号→半角符号批量替换脚本
 - `scripts/fix_math_delimiters.py` — 公式定界符统一脚本（`\(...\)`/`\[...\]` → `$…$`/`$$…$$`）

@@ -13,7 +13,7 @@
 ```
 教材 PDF
    │
-   ├─ 阶段 1：PDF → Markdown      （调用配套工具 mineru-textbook-to-md）
+   ├─ 阶段 1：PDF → Markdown      （内置 scripts/pdf_to_md.py，MinerU API + 书签语义分块）
    │        产出：full.md + 按章文件夹 + 本地图片 + 质量报告
    │
    ├─ 阶段 2：Markdown → LaTeX    （pandoc 初转 + 定理环境规范化 + 公式修复 + 编译）
@@ -39,7 +39,11 @@ pdf-textbook-to-tex-textbook/
 │   ├── preamble.tex                        导言区（宏包、定理族环境、交叉引用）
 │   └── main.tex                            主文件骨架
 └── scripts/
-    └── convert.py                          参考转换脚本（两遍流程：全局 id_map + 后处理）
+    ├── pdf_to_md.py                        阶段 1 入口（PDF → Markdown，内置实现）
+    ├── mineru_textbook_to_md/              阶段 1 vendored 实现（MinerU API + 书签分块）
+    ├── convert.py                          参考转换脚本（两遍流程：全局 id_map + 后处理）
+    ├── fix_*.py                            阶段 2 批量修复脚本（全角/定界符/表格列/图片并排）
+    └── tests/                              阶段 1 回归测试
 ```
 
 ## 使用方式
@@ -55,7 +59,7 @@ pdf-textbook-to-tex-textbook/
 
 | 依赖 | 用途 |
 |---|---|
-| `mineru-textbook-to-md` | 阶段 1：PDF → Markdown（配套工具），需 `MINERU_OFFICIAL_API_TOKEN` |
+| `scripts/pdf_to_md.py`（内置） | 阶段 1：PDF → Markdown，需 `MINERU_OFFICIAL_API_TOKEN`；依赖 `pypdf`/`requests`（`requirements.txt`） |
 | Python 3.10+ | 运行转换脚本 |
 | TeX Live（`xelatex`） | 阶段 2：编译（实测 `fontset=windows` 可用） |
 | `pandoc` 3.x | Markdown → LaTeX 初转 |
@@ -80,9 +84,12 @@ pdf-textbook-to-tex-textbook/
 - 阶段 1 依赖 MinerU 云端服务，受网络与服务状态影响（服务端临时故障表现为 `please try again later`）。
 - 编译产物中的排版类告警（`Overfull` / `Underfull` / `Missing character` / 字体替换）通常无法归零，须按量级分级登记而非追求「0 警告」。
 
+## 自包含
+
+阶段 1 的实现已**整体内联**（`scripts/mineru_textbook_to_md/`，源自 `mineru-textbook-to-md` v0.1.1），本 skill 不再依赖任何外部 skill 或相邻目录，单独克隆即可跑完整流水线。
+
 ## 配套项目
 
-- **[mineru-textbook-to-md](../mineru-textbook-to-md)** —— 阶段 1 的 PDF → Markdown 工具（本 Skill 的上游依赖）。
 - **[xsls-exam-skill](../xsls-exam-skill)** —— 同目录下的试卷 LaTeX 排版 Skill（结构范例）。
 
 ## 许可

@@ -8,7 +8,7 @@
 
 ```
 PDF ──[阶段1]──> Markdown 文档包 ──[阶段2]──> LaTeX 项目 ──> PDF
-      mineru-textbook-to-md        pandoc + 两遍流程 + 定理族环境
+      scripts/pdf_to_md.py         pandoc + 两遍流程 + 定理族环境
 ```
 
 ## 2. ASCII 流程图
@@ -22,7 +22,7 @@ PDF ──[阶段1]──> Markdown 文档包 ──[阶段2]──> LaTeX 项�
                                 │
                                 ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│ 阶段 1：PDF → Markdown（工具：mineru-textbook-to-md）                 │
+│ 阶段 1：PDF → Markdown（内置脚本 scripts/pdf_to_md.py）               │
 │                                                                      │
 │  1.1  --plan-only 本地预览分块计划（不上传、不需 Token）               │
 │         └─ 人工审核：每段边界必须落在「书签起始页」上                  │

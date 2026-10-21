@@ -1,14 +1,14 @@
-# 阶段 1 详解：PDF → Markdown（mineru-textbook-to-md）
+# 阶段 1 详解：PDF → Markdown（内置 scripts/pdf_to_md.py）
 
 > 本文档解决什么问题：把"上传 PDF 到 MinerU 并拿到按章组织的 Markdown 文档包"这件事讲透——三种运行方式、分块计划怎么审、书签有缺陷怎么办、失败了怎么续跑、怎么识别服务端故障、质检看哪些字段。
 
-前置工具：`mineru-textbook-to-md`（MinerU 云端 API + **本地书签语义分块**）。它不是一个"一把梭"的转换器，而是把「分块 → 上传 → 合并 → 拆分 → 出报告」拆成了可以分步审核、可以断点续跑的流程。
+内置实现：`scripts/pdf_to_md.py` + `scripts/mineru_textbook_to_md/`（MinerU 云端 API + **本地书签语义分块**），**不依赖任何外部 skill**。它不是一个"一把梭"的转换器，而是把「分块 → 上传 → 合并 → 拆分 → 出报告」拆成了可以分步审核、可以断点续跑的流程。
 
 ## 1. 安全与前置条件（先做）
 
 - **授权**：上传到 MinerU 前，必须确认用户已授权上传该 PDF；产出仅限个人学习使用，不对外分发。
 - **Token**：只从环境变量 `MINERU_OFFICIAL_API_TOKEN` 读取，**禁止打印、禁止写入任何文件**（包括总计划、脚本、日志）。
-- **依赖**：`pypdf`、`requests`（`requirements.txt` 仅这两项）；建议先设 `PYTHONUTF8=1` 避免 Windows 控制台编码问题。
+- **依赖**：`pypdf`、`requests`（本 skill 根目录 `requirements.txt` 仅这两项）；建议先设 `PYTHONUTF8=1` 避免 Windows 控制台编码问题。
 - **不要**用 `--force` 破坏已有产物，也不要在常规流程里使用 `--allow-unverified-split`——它只为一次"有意为之、已在文档中记录"的手工修复而存在。
 
 ```powershell
@@ -21,7 +21,7 @@ python -m pip install -r "<skill-root>\requirements.txt"
 ### 2.1 `--plan-only`：只生成本地分块计划（不上传、不需 Token）
 
 ```powershell
-python "<skill-root>\scripts\run.py" `
+python "<skill-root>\scripts\pdf_to_md.py" `
   --pdf "<pdf>" --base-name "<书名>" `
   --split-by auto --plan-only `
   --output "<工作根>"
@@ -32,7 +32,7 @@ python "<skill-root>\scripts\run.py" `
 ### 2.2 正式上传解析（需 Token）
 
 ```powershell
-python "...\scripts\run.py" `
+python "<skill-root>\scripts\pdf_to_md.py" `
   --pdf "<pdf>" --base-name "<书名>" `
   --split-by auto `
   --output "<工作根>"
@@ -46,11 +46,11 @@ python "...\scripts\run.py" `
 
 ```powershell
 # 1) 先 dry-run 看计划
-python "...\scripts\run.py" `
+python "<skill-root>\scripts\pdf_to_md.py" `
   --from-full-md "<full.md 或文件夹>" --page-count <页数> --dry-run
 
 # 2) 审完再真正执行；书签不可用时走正文标题路径
-python "...\scripts\run.py" `
+python "<skill-root>\scripts\pdf_to_md.py" `
   --from-full-md "<full.md>" --page-count <页数> --split-by chapter
 ```
 
@@ -129,7 +129,7 @@ python "...\scripts\run.py" `
 不要试图手工修补 PDF 书签——改用**正文标题路径**重拆：
 
 ```powershell
-python "...\scripts\run.py" `
+python "<skill-root>\scripts\pdf_to_md.py" `
   --from-full-md "<书名>/full.md" `
   --page-count 327 `
   --split-by chapter
